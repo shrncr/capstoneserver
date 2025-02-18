@@ -52,15 +52,15 @@ app.post('/login', async (req, res) => { //professor logs in with pin
     }
 });
 
-app.post('/addcourse', async (req, res) => { //professor can add a single course with CSV file upload which contains students
-    const { coursecsv, name } = req.body;
-    const professor = await Professor.findOne({ where: { name, pin } });
-    if (professor) {
-        res.json({ success: true, professor_id: professor.id });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-});
+// app.post('/addcourse', (req, res) => aysnc { //professor can add a single course with CSV file upload which contains students
+//     const { coursecsv, name } = req.body;
+//     const professor = await Professor.findOne({ where: { name, pin } });
+//     if (professor) {
+//         res.json({ success: true, professor_id: professor.id });
+//     } else {
+//         res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+// });
 
 app.post('/updateCourse', async (req, res) => { //professor can add a new file to update a course in which a student dropped. (remove courseID x, add new one)
     const { name, pin } = req.body;
@@ -82,21 +82,19 @@ app.post('/removePastCourses', async (req, res) => { //professor can add disable
     }
 });
 
-app.post('/removeCourse', async (req, res) => { //professor can add disable a single past course
-    const { professor_id, courseName} = req.body;
-    await Course.destroy({where: {professor_id, courseName}}).then(
+// app.post('/removeCourse', async (req, res) => { //professor can add disable a single past course
+//     const { professor_id, courseName} = req.body;
+//     await Course.destroy({where: {professor_id, courseName}}).then(
 
-    ).catch(error){
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+//     )
 
-    const professor = await Professor.findOne({ where: { name, pin } });
-    if (professor) {
-        res.json({ success: true, professor_id: professor.id });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-});
+//     const professor = await Professor.findOne({ where: { name, pin } });
+//     if (professor) {
+//         res.json({ success: true, professor_id: professor.id });
+//     } else {
+//         res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+// });
 
 // app.post('/checkIfStudentInCourse', async (req, res) => {
 // })
