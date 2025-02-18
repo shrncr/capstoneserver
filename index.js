@@ -132,4 +132,4 @@ app.get('/:courseId/attendance', async (req, res) => {//finds all past attendenc
     res.json(attendance);
 });
 
-app.listen(5000, () => console.log('Server running on port 5000'));
+app.listen(8082, '0.0.0.0', () => console.log('Server running on port 5000'));
