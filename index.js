@@ -13,7 +13,7 @@ const app = express();//start express app
 app.use(cors());
 app.use(express.json());
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {//connect to postgres
+const sequelize = new Sequelize(process.env.SUPABASE_URL, {//connect to postgres
     dialect: 'postgres',
     logging: false
 });
