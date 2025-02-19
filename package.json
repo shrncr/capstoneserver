@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node index.js",
+    "dev": "nodemon index.js",
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -19,6 +21,7 @@
     "pg": "^8.13.3",
     "pg-hstore": "^2.3.4",
     "postgres": "^3.4.5",
-    "sequelize": "^6.37.5"
+    "sequelize": "^6.37.5",
+    "vercel": "^41.1.4"
   }
 }
