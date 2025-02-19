@@ -13,14 +13,21 @@ const app = express();//start express app
 app.use(cors());
 app.use(express.json());
 
-const sequelize = new Sequelize(process.env.SUPABASE_URL, {//connect to postgres
+const sequelize = new Sequelize(process.env.SUPABASE_DATABASE_URL, {
     dialect: 'postgres',
+    dialectOptions: {
+        ssl: {
+            require: true,
+            rejectUnauthorized: false
+        }
+    },
     logging: false
 });
 
+
 const Professor = sequelize.define('professor', {//professor db schema
     name: { type: DataTypes.STRING, allowNull: false },
-    password: { type: DataTypes.STRING, allowNull: false }
+    pin: { type: DataTypes.STRING, allowNull: false }
 },{ timestamps: false });
 const Course = sequelize.define('course', {//course db schema
     name: { type: DataTypes.STRING, allowNull: false }
@@ -62,25 +69,25 @@ app.post('/login', async (req, res) => { //professor logs in with pin
 //     }
 // });
 
-app.post('/updateCourse', async (req, res) => { //professor can add a new file to update a course in which a student dropped. (remove courseID x, add new one)
-    const { name, pin } = req.body;
-    const professor = await Professor.findOne({ where: { name, pin } });
-    if (professor) {
-        res.json({ success: true, professor_id: professor.id });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-});
+// app.post('/updateCourse', async (req, res) => { //professor can add a new file to update a course in which a student dropped. (remove courseID x, add new one)
+//     const { name, pin } = req.body;
+//     const professor = await Professor.findOne({ where: { name, pin } });
+//     if (professor) {
+//         res.json({ success: true, professor_id: professor.id });
+//     } else {
+//         res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+// });
 
-app.post('/removePastCourses', async (req, res) => { //professor can add disable all past courses
-    const { name, pin } = req.body;
-    const professor = await Professor.findOne({ where: { name, pin } });
-    if (professor) {
-        res.json({ success: true, professor_id: professor.id });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-});
+// app.post('/removePastCourses', async (req, res) => { //professor can add disable all past courses
+//     const { name, pin } = req.body;
+//     const professor = await Professor.findOne({ where: { name, pin } });
+//     if (professor) {
+//         res.json({ success: true, professor_id: professor.id });
+//     } else {
+//         res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+// });
 
 // app.post('/removeCourse', async (req, res) => { //professor can add disable a single past course
 //     const { professor_id, courseName} = req.body;
@@ -122,14 +129,15 @@ app.get('/students/:course_id', async (req, res) => {//get students in a particu
     const students = await Student.findAll({ where: { course_id: req.params.course_id } });
     res.json(students);
 });
-app.post('/attendance', async (req, res) => {//adds attendence to db.. idk if needed
-    const { studentId, course_id, status } = req.body;
-    const attendance = await Attendance.create({ studentId, course_id, status });
-    res.json(attendance);
-});
+// app.post('/attendance', async (req, res) => {//adds attendence to db.. idk if needed
+//     const { studentId, course_id, status } = req.body;
+//     const attendance = await Attendance.create({ studentId, course_id, status });
+//     res.json(attendance);
+// });
 app.get('/:courseId/attendance', async (req, res) => {//finds all past attendence for a current course
     const attendance = await Attendance.findAll({ where: { course_id: req.params.courseId } });
     res.json(attendance);
 });
 
-app.listen(8082, '0.0.0.0', () => console.log('Server running on port 5000'));
+const PORT = process.env.PORT || 8082;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
