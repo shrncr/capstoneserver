@@ -33,3 +33,7 @@ Thumbs.db  # Windows system file
 .idea/
 *.swp
 /.env
+/node_modules
+node_modules
+.vercel
+.env*.local

@@ -21,6 +21,7 @@ const sequelize = new Sequelize(process.env.SUPABASE_DATABASE_URL, {
             rejectUnauthorized: false
         }
     },
+    dialectModule: require("pg"),
     logging: false
 });
 
