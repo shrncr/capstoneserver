@@ -99,29 +99,60 @@ app.get('/:courseId/attendance', async (req, res) => {//finds all past attendenc
 
 app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
     try {
-        const { professor_id, name } = req.body;
-        const filePath = req.file.path;
-        const students = await parseCSV(filePath);
-
-        const course = await Course.create({ name, isCurrent: true, professor_id });
-
-        for (let student of students) {
-            let existingStudent = await Student.findOne({ where: { name: student.Student } });
-
-            if (!existingStudent) {
-                existingStudent = await Student.create({ name: student.Student });
-            }
-
-            // Associate student with course
-            await existingStudent.update({ course_id: course.id });
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
 
-        fs.unlinkSync(filePath);
-        res.json({ success: true, course });
+        const filePath = req.file.path;
+        const fileName = path.basename(filePath);
+        const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4}, \d+_\d+_\d+ (AM|PM)\.csv$/;
+
+        const match = fileName.match(fileRegex);
+
+        if (!match) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({ success: false, message: 'Invalid filename format' });
+        }
+
+        const courseId = parseInt(match[1]);
+        const students = [];
+        const requiredHeaders = ['Name', 'Login ID', 'SIS ID', 'Section', 'Role', 'Last Activity', 'Total Activity'];
+        let headersValid = false;
+
+        fs.createReadStream(filePath)
+            .pipe(csvParser())
+            .on('headers', (headers) => {
+                const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
+                const expectedHeaders = requiredHeaders.map(h => h.trim().toLowerCase());
+                headersValid = JSON.stringify(normalizedHeaders) === JSON.stringify(expectedHeaders);
+            })            
+            .on('data', (row) => {
+                students.push({ name: row['Name'], sisId: row['SIS ID'], section: row['Section'] });
+            })
+            .on('end', async () => {
+                if (!headersValid) {
+                    fs.unlinkSync(filePath);
+                    return res.status(400).json({ success: false, message: 'CSV headers do not match expected format' });
+                }
+                
+                const course = await Course.create({ id: courseId, name: students[0]?.section, isCurrent: true, professor_id: req.body.professor_id });
+                
+                for (let student of students) {
+                    let existingStudent = await Student.findOne({ where: { sis_id: student.sisId } });
+                    if (!existingStudent) {
+                        existingStudent = await Student.create({ name: student.name, sis_id: student.sisId });
+                    }
+                    await existingStudent.update({ course_id: course.id });
+                }
+
+                fs.unlinkSync(filePath);
+                res.json({ success: true, course });
+            });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Error adding course', error });
+        res.status(500).json({ success: false, message: 'Error adding course', error: error.message });
     }
 });
+
 
 
 app.post('/updateCourse', async (req, res) => {
