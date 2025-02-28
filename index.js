@@ -15,7 +15,7 @@ const app = express();//start express app
 app.use(cors());
 app.use(express.json());
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 const sequelize = new Sequelize(process.env.SUPABASE_DATABASE_URL, {
     dialect: 'postgres',
