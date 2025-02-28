@@ -36,7 +36,8 @@ const Professor = sequelize.define('professor', {//professor db schema
 },{ timestamps: false });
 const Course = sequelize.define('course', {//course db schema
     name: { type: DataTypes.STRING, allowNull: false },
-    isCurrent:{type: Boolean,allowNull: false}
+    isCurrent:{type: Boolean,allowNull: false},
+    professor_id:{type:DataTypes.INTEGER}
 },{ timestamps: false });
 const Student = sequelize.define('student', {//student db schema
     id: { 
@@ -135,7 +136,8 @@ app.post('/updateCourse', async (req, res) => {
 
 app.post('/removePastCourses', async (req, res) => {
     try {
-        await Course.update({ isCurrent: false }, { where: { isCurrent: true } });
+        const { professor_id } = req.body;
+        await Course.update({ isCurrent: false }, { where: { isCurrent: true, professor_id } });
         res.json({ success: true, message: 'Past courses disabled' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error disabling past courses', error });
