@@ -47,7 +47,7 @@ const Course = sequelize.define('course', {//course db schema
     name: { type: DataTypes.STRING, allowNull: false },
     isCurrent:{type: Boolean,allowNull: false},
     professor_id:{type:DataTypes.INTEGER},
-    student_ids: { 
+    students: { 
         type: DataTypes.ARRAY(DataTypes.INTEGER), // Store array of student IDs
         defaultValue: [] 
     }
