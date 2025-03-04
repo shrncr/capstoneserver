@@ -169,9 +169,9 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                     // Process each student
                     const studentIds = [];
                     for (let student of students) {
-                        let existingStudent = await Student.findOne({ where: { id: student.sisId } });
+                        let existingStudent = await Student.findOne({ where: { id: student.id } });
                         if (!existingStudent) {
-                            existingStudent = await Student.create({ name: student.name, id: student.sisId });
+                            existingStudent = await Student.create({ name: student.name, id: student.id });
                         }
                         studentIds.push(existingStudent.id);
                     }
