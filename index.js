@@ -82,27 +82,66 @@ app.post('/login', async (req, res) => { //professor logs in with pin
     }
 });
 
-app.get("/students/:courseId/encodings", async (req, res) => { //gets students in a current course's face encodings
+app.get("/students/:courseId/encodings", async (req, res) => { 
+    //returns all students' ids and face encodings in a course
     try {
-        const students = await Student.findAll({ where: { course_id: req.params.courseId } });
+        // Find the course and retrieve the students array
+        const course = await Course.findOne({ where: { id: req.params.courseId } });
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+
+        // Ensure students is an array before querying
+        const studentIds = course.students || [];
+
+        if (studentIds.length === 0) {
+            return res.json([]); // Return empty array if no students are in the course
+        }
+
+        // Fetch students whose IDs match those in the course's students array
+        const students = await Student.findAll({ where: { id: studentIds } });
+
+        // Map to required response format
         const response = students.map(student => ({
             id: student.id,
             face_encoding: student.face_encoding 
         }));
-        res.json(response);
+
+        res.json(response); 
     } catch (error) {
         console.error("Error fetching students:", error);
         res.status(500).json({ error: "Error fetching students" });
     }
 });
+
 app.get('/courses/:professorId', async (req, res) => {//finds all of the professors courses
     const courses = await Course.findAll({ where: { professor_id: req.params.professorId } });
     res.json(courses);
 });
-app.get('/students/:course_id', async (req, res) => {//get students in a particular course
-    const students = await Student.findAll({ where: { course_id: req.params.course_id } });
-    res.json(students);
+
+app.get('/course/:courseId/students', async (req, res) => { //get all students in a course
+    try {
+        const courseId = req.params.courseId;
+        const course = await Course.findOne({ where: { id: courseId } });
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+
+        // Get student IDs from the course's "students" array
+        const studentIds = course.students || [];
+
+        // Find all students where their ID is in that array
+        const students = await Student.findAll({ where: { id: studentIds } });
+
+        res.json({ success: true, students });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error fetching students', error: error.message });
+    }
 });
+
 
 app.get('/:courseId/attendance', async (req, res) => {//finds all past attendence for a current course
     const attendance = await Attendance.findAll({ where: { course_id: req.params.courseId } });
@@ -123,13 +162,13 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 
         const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4},\s\d+_\d+_\d+\s(AM|PM)\.csv$/;
 
-        const match = 26772 //fileName.match(fileRegex);
-
+        const match = fileName.match(fileRegex);
+        console.log(match[1])
         if (!match) {
             return res.status(400).json({ success: false, message: 'Invalid filename format' });
         }
 
-        const courseId = 26772 //parseInt(match[1]); // Extract course ID
+        const courseId = parseInt(match[1]); // Extract course ID
         const professorId = req.body.professor_id; // Get professor ID from request body
         if (!professorId) {
             return res.status(400).json({ success: false, message: 'Professor ID is required' });
@@ -196,16 +235,6 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 });
 
 
-app.post('/updateCourse', async (req, res) => {
-    try {
-        const { student_id, new_course_id } = req.body;
-        await Student.update({ course_id: new_course_id }, { where: { id: student_id } });
-        res.json({ success: true, message: 'Course updated successfully' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Error updating course', error });
-    }
-});
-
 app.post('/removePastCourses', async (req, res) => {
     try {
         const { professor_id } = req.body;
@@ -216,10 +245,10 @@ app.post('/removePastCourses', async (req, res) => {
     }
 });
 
-app.post('/removeCourse', async (req, res) => {
+app.post('/removeCourse', async (req, res) => {//makes course inactive by courseID
     try {
-        const { professor_id, courseName } = req.body;
-        await Course.destroy({ where: { professor_id, name: courseName } });
+        const { professor_id, course_id } = req.body;
+        await Course.update({ isCurrent: false }, { where: { isCurrent: true, professor_id, course_id } });
         res.json({ success: true, message: 'Course removed successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error removing course', error });
@@ -229,12 +258,24 @@ app.post('/removeCourse', async (req, res) => {
 app.post('/checkIfStudentInCourse', async (req, res) => {
     try {
         const { student_id, course_id } = req.body;
-        const student = await Student.findOne({ where: { id: student_id, course_id } });
-        res.json({ exists: !!student });
+
+        // Find the course
+        const course = await Course.findOne({ where: { id: course_id } });
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+
+        // Check if student_id is in the students array
+        const isStudentInCourse = course.students.includes(student_id);
+
+        res.json({ exists: isStudentInCourse });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Error checking student', error });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error checking student', error: error.message });
     }
 });
+
 
 app.post('/uploadStudentPictures', async (req, res) => {
     try {
