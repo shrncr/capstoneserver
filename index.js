@@ -8,6 +8,8 @@ require('dotenv').config(); //with db uri
 const express = require('express'); //routing
 const cors = require('cors'); //https security
 const multer = require('multer');
+const streamifier = require('streamifier');
+const csvParser = require('csv-parser');
 const Papa = require('papaparse');
 const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
 const path = require('path');
@@ -108,17 +110,21 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 
         console.log("File received:", req.file);
 
-        // req.file.buffer contains the file data
-        const fileBuffer = req.file.buffer.toString('utf8'); // Convert buffer to string (CSV data)
-        
-        // Process the CSV data directly without storing it to disk
         const results = [];
-        require('csv-parser')()
-            .write(fileBuffer)
-            .on('data', (data) => results.push(data))
-            .on('end', async () => {
+        const readableStream = streamifier.createReadStream(req.file.buffer); // Convert buffer to stream
+
+        readableStream
+            .pipe(csvParser()) // Parse CSV
+            .on('data', (row) => {
+                results.push(row);
+            })
+            .on('end', () => {
                 console.log("Parsed CSV Data:", results);
                 res.json({ success: true, message: 'File processed successfully', data: results });
+            })
+            .on('error', (err) => {
+                console.error("CSV Parsing Error:", err);
+                res.status(500).json({ success: false, message: 'Error parsing CSV', error: err.message });
             });
 
     } catch (error) {
