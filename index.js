@@ -67,7 +67,7 @@ const Attendance = sequelize.define('attendance', {//attendence db schema. la la
 
 //relationships
 Course.belongsTo(Professor, { foreignKey: 'professor_id' });
-Student.belongsTo(Course, { foreignKey: 'course_id' });
+//Student.belongsTo(Course, { foreignKey: 'course_id' });
 Attendance.belongsTo(Student, { foreignKey: 'student_id' });
 Attendance.belongsTo(Course, { foreignKey: 'course_id' });
 sequelize.sync();
