@@ -10,6 +10,7 @@ const cors = require('cors'); //https security
 const multer = require('multer');
 const Papa = require('papaparse');
 const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
+const path = require('path');
 
 const app = express();//start express app
 app.use(cors());
