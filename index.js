@@ -126,7 +126,7 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid filename format' });
         }
 
-        const courseId = parseInt(match[1]); // Extract course ID
+        const courseId = 26772 //parseInt(match[1]); // Extract course ID
         const professorId = req.body.professor_id; // Get professor ID from request body
         if (!professorId) {
             return res.status(400).json({ success: false, message: 'Professor ID is required' });
