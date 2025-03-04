@@ -40,6 +40,10 @@ const Professor = sequelize.define('professor', {//professor db schema
     pin: { type: DataTypes.STRING, allowNull: false }
 },{ timestamps: false });
 const Course = sequelize.define('course', {//course db schema
+    id: { 
+        type: DataTypes.INTEGER, 
+        primaryKey: true 
+    },
     name: { type: DataTypes.STRING, allowNull: false },
     isCurrent:{type: Boolean,allowNull: false},
     professor_id:{type:DataTypes.INTEGER}
@@ -108,23 +112,75 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
 
-        console.log("File received:", req.file);
+        console.log("File received:", req.file.originalname);
 
-        const results = [];
-        const readableStream = streamifier.createReadStream(req.file.buffer); // Convert buffer to stream
+        // Extract course ID from filename using regex
+        const fileName = req.file.originalname;
+        const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4}, \d+_\d+_\d+ (AM|PM)\.csv$/;
+        const match = fileName.match(fileRegex);
+
+        if (!match) {
+            return res.status(400).json({ success: false, message: 'Invalid filename format' });
+        }
+
+        const courseId = parseInt(match[1]); // Extract course ID
+        const professorId = req.body.professor_id; // Get professor ID from request body
+        if (!professorId) {
+            return res.status(400).json({ success: false, message: 'Professor ID is required' });
+        }
+
+        const students = [];
+        let courseName = null; // Course name will be set based on the first row's "Section"
+
+        // Convert buffer to readable stream
+        const readableStream = streamifier.createReadStream(req.file.buffer);
 
         readableStream
-            .pipe(csvParser()) // Parse CSV
+            .pipe(csvParser())
+            .on('headers', (headers) => {
+                const requiredHeaders = ['Name', 'Login ID', 'SIS ID', 'Section', 'Role', 'Last Activity', 'Total Activity'];
+                const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
+                const expectedHeaders = requiredHeaders.map(h => h.trim().toLowerCase());
+
+                if (JSON.stringify(normalizedHeaders) !== JSON.stringify(expectedHeaders)) {
+                    return res.status(400).json({ success: false, message: 'CSV headers do not match expected format' });
+                }
+            })
             .on('data', (row) => {
-                results.push(row);
+                if (!courseName) courseName = row['Section']; // Set course name from first row
+                students.push({ name: row['Name'], sisId: row['SIS ID'], section: row['Section'] });
             })
-            .on('end', () => {
-                console.log("Parsed CSV Data:", results);
-                res.json({ success: true, message: 'File processed successfully', data: results });
-            })
-            .on('error', (err) => {
-                console.error("CSV Parsing Error:", err);
-                res.status(500).json({ success: false, message: 'Error parsing CSV', error: err.message });
+            .on('end', async () => {
+                try {
+                    // Ensure course is created
+                    let course = await Course.findOne({ where: { id: courseId } });
+                    if (!course) {
+                        course = await Course.create({ 
+                            id: courseId, 
+                            name: courseName, 
+                            isCurrent: true, 
+                            professor_id: professorId 
+                        });
+                    }
+
+                    // Process each student
+                    const studentIds = [];
+                    for (let student of students) {
+                        let existingStudent = await Student.findOne({ where: { sis_id: student.sisId } });
+                        if (!existingStudent) {
+                            existingStudent = await Student.create({ name: student.name, sis_id: student.sisId });
+                        }
+                        studentIds.push(existingStudent.id);
+                    }
+
+                    // Associate students with the course
+                    await course.update({ students: studentIds });
+
+                    res.json({ success: true, message: 'Course and students added successfully', course });
+                } catch (err) {
+                    console.error("Database error:", err);
+                    res.status(500).json({ success: false, message: 'Error updating database', error: err.message });
+                }
             });
 
     } catch (error) {
