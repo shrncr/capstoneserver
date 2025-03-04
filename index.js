@@ -58,7 +58,7 @@ const Student = sequelize.define('student', {//student db schema
         primaryKey: true 
     },
     name: { type: DataTypes.STRING, allowNull: false },
-    face_encoding: { type: DataTypes.JSON, allowNull: false },
+    face_encoding: { type: DataTypes.JSON, allowNull: true },
 },{ timestamps: false });
 const Attendance = sequelize.define('attendance', {//attendence db schema. la la la
     timestamp: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
