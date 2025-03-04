@@ -116,7 +116,10 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 
         // Extract course ID from filename using regex
         const fileName = req.file.originalname;
-        const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4}, \d+_\d+_\d+ (AM|PM)\.csv$/;
+        console.log("Uploaded Filename:", req.file.originalname);
+
+        const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4},\s\d+_\d+_\d+\s(AM|PM)\.csv$/;
+
         const match = fileName.match(fileRegex);
 
         if (!match) {
