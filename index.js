@@ -148,7 +148,7 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
             })
             .on('data', (row) => {
                 if (!courseName) courseName = row['Section']; // Set course name from first row
-                students.push({ name: row['Name'], sisId: row['SIS ID'], section: row['Section'] });
+                students.push({ name: row['Name'], id: row['SIS ID'], section: row['Section'] });
             })
             .on('end', async () => {
                 try {
@@ -166,9 +166,9 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                     // Process each student
                     const studentIds = [];
                     for (let student of students) {
-                        let existingStudent = await Student.findOne({ where: { sis_id: student.sisId } });
+                        let existingStudent = await Student.findOne({ where: { id: student.sisId } });
                         if (!existingStudent) {
-                            existingStudent = await Student.create({ name: student.name, sis_id: student.sisId });
+                            existingStudent = await Student.create({ name: student.name, id: student.sisId });
                         }
                         studentIds.push(existingStudent.id);
                     }
