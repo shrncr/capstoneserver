@@ -2,7 +2,6 @@
 Server Side Setup
 Will allow for communication between RPi and Extension
 Will allow for DB access
-Add an env file with your uri before doing npm start
 */
 require('dotenv').config(); //with db uri
 const express = require('express'); //routing
@@ -13,12 +12,9 @@ const csvParser = require('csv-parser');
 const Papa = require('papaparse');
 const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
 const path = require('path');
-
 const app = express();//start express app
 app.use(cors());
 app.use(express.json());
-
-
 const storage = multer.memoryStorage(); // Store files in memory instead of disk
 const upload = multer({ storage });
 
@@ -33,7 +29,6 @@ const sequelize = new Sequelize(process.env.SUPABASE_DATABASE_URL, {
     dialectModule: require("pg"),
     logging: false
 });
-
 
 const Professor = sequelize.define('professor', {//professor db schema
     name: { type: DataTypes.STRING, allowNull: false },
@@ -85,24 +80,18 @@ app.post('/login', async (req, res) => { //professor logs in with pin
 app.get("/students/:courseId/encodings", async (req, res) => { 
     //returns all students' ids and face encodings in a course
     try {
-        // Find the course and retrieve the students array
         const course = await Course.findOne({ where: { id: req.params.courseId } });
-
         if (!course) {
             return res.status(404).json({ success: false, message: "Course not found" });
         }
 
-        // Ensure students is an array before querying
         const studentIds = course.students || [];
 
         if (studentIds.length === 0) {
             return res.json([]); // Return empty array if no students are in the course
         }
 
-        // Fetch students whose IDs match those in the course's students array
         const students = await Student.findAll({ where: { id: studentIds } });
-
-        // Map to required response format
         const response = students.map(student => ({
             id: student.id,
             face_encoding: student.face_encoding 
@@ -128,11 +117,7 @@ app.get('/course/:courseId/students', async (req, res) => { //get all students i
         if (!course) {
             return res.status(404).json({ success: false, message: 'Course not found' });
         }
-
-        // Get student IDs from the course's "students" array
         const studentIds = course.students || [];
-
-        // Find all students where their ID is in that array
         const students = await Student.findAll({ where: { id: studentIds } });
 
         res.json({ success: true, students });
@@ -153,10 +138,7 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
-
         console.log("File received:", req.file.originalname);
-
-        // Extract course ID from filename using regex
         const fileName = req.file.originalname;
         console.log("Uploaded Filename:", req.file.originalname);
 
@@ -175,9 +157,8 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
         }
 
         const students = [];
-        let courseName = null; // Course name will be set based on the first row's "Section"
+        let courseName = null;
 
-        // Convert buffer to readable stream
         const readableStream = streamifier.createReadStream(req.file.buffer);
 
         readableStream
@@ -192,12 +173,11 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                 }
             })
             .on('data', (row) => {
-                if (!courseName) courseName = row['Section']; // Set course name from first row
+                if (!courseName) courseName = row['Section']; 
                 students.push({ name: row['Name'], id: row['SIS ID'], section: row['Section'] });
             })
             .on('end', async () => {
                 try {
-                    // Ensure course is created
                     let course = await Course.findOne({ where: { id: courseId } });
                     if (!course) {
                         course = await Course.create({ 
@@ -207,8 +187,6 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                             professor_id: professorId 
                         });
                     }
-
-                    // Process each student
                     const studentIds = [];
                     for (let student of students) {
                         let existingStudent = await Student.findOne({ where: { id: student.id } });
@@ -217,8 +195,6 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                         }
                         studentIds.push(existingStudent.id);
                     }
-
-                    // Associate students with the course
                     await course.update({ students: studentIds });
 
                     res.json({ success: true, message: 'Course and students added successfully', course });
@@ -227,7 +203,6 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
                     res.status(500).json({ success: false, message: 'Error updating database', error: err.message });
                 }
             });
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Error processing file', error: error.message });
@@ -258,15 +233,11 @@ app.post('/removeCourse', async (req, res) => {//makes course inactive by course
 app.post('/checkIfStudentInCourse', async (req, res) => {
     try {
         const { student_id, course_id } = req.body;
-
-        // Find the course
         const course = await Course.findOne({ where: { id: course_id } });
 
         if (!course) {
             return res.status(404).json({ success: false, message: 'Course not found' });
         }
-
-        // Check if student_id is in the students array
         const isStudentInCourse = course.students.includes(student_id);
 
         res.json({ exists: isStudentInCourse });
