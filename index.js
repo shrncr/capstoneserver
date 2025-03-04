@@ -16,7 +16,9 @@ const app = express();//start express app
 app.use(cors());
 app.use(express.json());
 
-const upload = multer({ storage: multer.memoryStorage() });
+
+const storage = multer.memoryStorage(); // Store files in memory instead of disk
+const upload = multer({ storage });
 
 const sequelize = new Sequelize(process.env.SUPABASE_DATABASE_URL, {
     dialect: 'postgres',
@@ -104,56 +106,26 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
 
-        const filePath = req.file.path;
-        const fileName = path.basename(filePath);
-        const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4}, \d+_\d+_\d+ (AM|PM)\.csv$/;
+        console.log("File received:", req.file);
 
-        const match = fileName.match(fileRegex);
-
-        if (!match) {
-            fs.unlinkSync(filePath);
-            return res.status(400).json({ success: false, message: 'Invalid filename format' });
-        }
-
-        const courseId = parseInt(match[1]);
-        const students = [];
-        const requiredHeaders = ['Name', 'Login ID', 'SIS ID', 'Section', 'Role', 'Last Activity', 'Total Activity'];
-        let headersValid = false;
-
-        fs.createReadStream(filePath)
-            .pipe(csvParser())
-            .on('headers', (headers) => {
-                const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
-                const expectedHeaders = requiredHeaders.map(h => h.trim().toLowerCase());
-                headersValid = JSON.stringify(normalizedHeaders) === JSON.stringify(expectedHeaders);
-            })            
-            .on('data', (row) => {
-                students.push({ name: row['Name'], sisId: row['SIS ID'], section: row['Section'] });
-            })
+        // req.file.buffer contains the file data
+        const fileBuffer = req.file.buffer.toString('utf8'); // Convert buffer to string (CSV data)
+        
+        // Process the CSV data directly without storing it to disk
+        const results = [];
+        require('csv-parser')()
+            .write(fileBuffer)
+            .on('data', (data) => results.push(data))
             .on('end', async () => {
-                if (!headersValid) {
-                    fs.unlinkSync(filePath);
-                    return res.status(400).json({ success: false, message: 'CSV headers do not match expected format' });
-                }
-                
-                const course = await Course.create({ id: courseId, name: students[0]?.section, isCurrent: true, professor_id: req.body.professor_id });
-                
-                for (let student of students) {
-                    let existingStudent = await Student.findOne({ where: { sis_id: student.sisId } });
-                    if (!existingStudent) {
-                        existingStudent = await Student.create({ name: student.name, sis_id: student.sisId });
-                    }
-                    await existingStudent.update({ course_id: course.id });
-                }
-
-                fs.unlinkSync(filePath);
-                res.json({ success: true, course });
+                console.log("Parsed CSV Data:", results);
+                res.json({ success: true, message: 'File processed successfully', data: results });
             });
+
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Error adding course', error: error.message });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error processing file', error: error.message });
     }
 });
-
 
 
 app.post('/updateCourse', async (req, res) => {
