@@ -76,6 +76,16 @@ app.post('/login', async (req, res) => { //professor logs in with pin
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
+app.post('/signup', async (req, res) => { //professor logs in with pin
+    try {
+        const { name, pin } = req.body;
+        const newUser = await Professor.create({ name, pin});
+
+        res.status(201).json({ message: "User created successfully", user: newUser, });
+      } catch (error) {
+        res.status(400).json({ message: error.message });
+      }
+});
 
 app.get("/students/:courseId/encodings", async (req, res) => { 
     //returns all students' ids and face encodings in a course
@@ -134,6 +144,8 @@ app.get('/:courseId/attendance', async (req, res) => {//finds all past attendenc
 });
 
 app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
+    const match = fileName.match(fileRegex);
+    console.log(match)
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -144,13 +156,14 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 
         const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4},\s\d+_\d+_\d+\s(AM|PM)\.csv$/;
 
-        const match = fileName.match(fileRegex);
-        console.log(match[1])
-        if (!match) {
-            return res.status(400).json({ success: false, message: 'Invalid filename format' });
-        }
+        // const match = fileName.match(fileRegex);
+        // console.log(match[1])
+        // console.log(match)
+        // if (!match) {
+        //     return res.status(400).json({ success: false, message: 'Invalid filename format' });
+        // }
 
-        const courseId = parseInt(match[1]); // Extract course ID
+        const courseId = 22222// parseInt(match[1]); // Extract course ID
         const professorId = req.body.professor_id; // Get professor ID from request body
         if (!professorId) {
             return res.status(400).json({ success: false, message: 'Professor ID is required' });
