@@ -144,8 +144,6 @@ app.get('/:courseId/attendance', async (req, res) => {//finds all past attendenc
 });
 
 app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
-    const match = fileName.match(fileRegex);
-    console.log(match)
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -156,14 +154,13 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
 
         const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4},\s\d+_\d+_\d+\s(AM|PM)\.csv$/;
 
-        // const match = fileName.match(fileRegex);
-        // console.log(match[1])
-        // console.log(match)
-        // if (!match) {
-        //     return res.status(400).json({ success: false, message: 'Invalid filename format' });
-        // }
+        const match = fileName.match(fileRegex);
+        console.log(match[1])
+        if (!match) {
+            return res.status(400).json({ success: false, message: 'Invalid filename format' });
+        }
 
-        const courseId = 22222// parseInt(match[1]); // Extract course ID
+        const courseId = parseInt(match[1]); // Extract course ID
         const professorId = req.body.professor_id; // Get professor ID from request body
         if (!professorId) {
             return res.status(400).json({ success: false, message: 'Professor ID is required' });
@@ -222,7 +219,6 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
     }
 });
 
-
 app.post('/removePastCourses', async (req, res) => {
     try {
         const { professor_id } = req.body;
@@ -280,6 +276,6 @@ app.post('/attendance', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error recording attendance', error });
     }
 });
-const PORT = process.env.PORT |8082;
+const PORT = process.env.PORT |5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   
