@@ -132,7 +132,7 @@ app.get("/students/:courseId", async (req, res) => {
         const students = await Student.findAll({ where: { id: studentIds } });
         const response = students.map(student => ({
             id: student.id,
-            name: student.face_encoding 
+            name: student.name 
         }));
 
         res.json(response); 
