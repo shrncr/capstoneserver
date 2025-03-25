@@ -81,10 +81,10 @@ app.post('/signup', async (req, res) => { //professor logs in with pin
         const { name, pin } = req.body;
         const newUser = await Professor.create({ name, pin});
 
-        res.status(201).json({ message: "User created successfully", user: newUser, });
-      } catch (error) {
-        res.status(400).json({ message: error.message });
-      }
+        res.status(201).json({ success: true, message: "User created successfully", user: newUser, });
+    } catch (error) {
+      res.status(400).json({success: false, message: error.message });
+    }
 });
 
 app.get("/students/:courseId/encodings", async (req, res) => { 
@@ -280,5 +280,6 @@ app.post('/attendance', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error recording attendance', error });
     }
 });
-const PORT = process.env.PORT || 8082;
+const PORT = process.env.PORT |8082;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  
