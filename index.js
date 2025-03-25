@@ -114,6 +114,35 @@ app.get("/students/:courseId/encodings", async (req, res) => {
     }
 });
 
+
+app.get("/students/:courseId", async (req, res) => { 
+    //returns all students' ids and face encodings in a course
+    try {
+        const course = await Course.findOne({ where: { id: req.params.courseId } });
+        if (!course) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+
+        const studentIds = course.students || [];
+
+        if (studentIds.length === 0) {
+            return res.json([]); // Return empty array if no students are in the course
+        }
+
+        const students = await Student.findAll({ where: { id: studentIds } });
+        const response = students.map(student => ({
+            id: student.id,
+            name: student.face_encoding 
+        }));
+
+        res.json(response); 
+    } catch (error) {
+        console.error("Error fetching students:", error);
+        res.status(500).json({ error: "Error fetching students" });
+    }
+});
+
+
 app.get('/courses/:professorId', async (req, res) => {//finds all of the professors courses
     const courses = await Course.findAll({ where: { professor_id: req.params.professorId } });
     res.json(courses);
@@ -155,7 +184,8 @@ app.post('/addcourse', upload.single('coursecsv'), async (req, res) => {
         const fileRegex = /^export_course_(\d+)_users_\d+_\d+_\d{4},\s\d+_\d+_\d+\s(AM|PM)\.csv$/;
 
         const match = fileName.match(fileRegex);
-        console.log(match[1])
+        console.log(match)
+
         if (!match) {
             return res.status(400).json({ success: false, message: 'Invalid filename format' });
         }
