@@ -7,11 +7,14 @@ require('dotenv').config(); //with db uri
 const express = require('express'); //routing
 const cors = require('cors'); //https security
 const multer = require('multer');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const streamifier = require('streamifier');
 const csvParser = require('csv-parser');
 const Papa = require('papaparse');
 const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
 const path = require('path');
+const { Op } = require("sequelize");
 const app = express();//start express app
 app.use(cors());
 app.use(express.json());
@@ -53,8 +56,22 @@ const Student = sequelize.define('student', {//student db schema
         primaryKey: true 
     },
     name: { type: DataTypes.STRING, allowNull: false },
+    number: {type:DataTypes.STRING, allowNull: true},
+    email:{type:DataTypes.STRING, allowNull: true, unique:true},
+    password:{type:DataTypes.STRING, allowNull: true},
     face_encoding: { type: DataTypes.JSON, allowNull: true },
-},{ timestamps: false });
+    registered: {type:DataTypes.BOOLEAN, allowNull:false, defaultValue:false}
+},
+{ timestamps: false,
+    hooks:{
+        beforeUpdate: async (Student) => {
+            if (Student.changed('password')) {
+              Student.password = await bcrypt.hash(Student.password, 10);
+            }
+          },
+    }
+ },
+);
 const Attendance = sequelize.define('attendance', {//attendence db schema. la la la
     timestamp: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
     status: { type: DataTypes.ENUM('Present', 'Absent'), allowNull: false }
@@ -87,6 +104,58 @@ app.post('/signup', async (req, res) => { //professor logs in with pin
     }
 });
 
+app.post('/student/signup', async (req, res) => {
+    try {
+        const { password, studentId, email, number } = req.body;
+        const signingUpUser = await Student.findByPk(studentId);
+
+        if (!signingUpUser) {
+            console.log("Student not found in DB:", studentId);
+            return res.status(404).json({ success: false, message: "Student not found" });
+        }
+
+        if (signingUpUser.registered) {
+            return res.status(403).json({ success: false, message: "Account already exists for this user" });
+        }
+
+        // Ensure the update is awaited
+        await signingUpUser.update({
+            password: password,
+            email: email,
+            number: number,
+            registered: true
+        });
+
+        return res.status(201).json({ success: true, message: "User created successfully", user: signingUpUser });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/student/login', async (req, res) => { //professor logs in with pin
+    try {
+        const { email, password } = req.body;
+        const user = await Student.findOne({ where: { email } });
+
+        const isPasswordValid = await bcrypt.compare(password.trim(), user.password.trim());
+    console.log(isPasswordValid);
+
+    if (!user || !isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+        const token = jwt.sign(
+            { id: user.id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+          );
+//token
+        res.status(201).json({ success: true, message: "User created successfully", token: token, });
+    } catch (error) {
+      res.status(400).json({success: false, message: error.message });
+    }
+});
+
 app.get("/students/:courseId/encodings", async (req, res) => { 
     //returns all students' ids and face encodings in a course
     try {
@@ -114,7 +183,26 @@ app.get("/students/:courseId/encodings", async (req, res) => {
     }
 });
 
-
+app.post("/studentInfo", async (req, res) => {
+    try {
+      //make it give the token tho
+      const user  = req.body.user;
+      jwt.verify(user, process.env.JWT_SECRET, async function(err, decoded){
+        console.log(decoded)
+        console.log(decoded.id) 
+        const userInfo = await Student.findByPk(decoded.id);
+        const courses= await Course.findAll({where: {students: {[Op.contains]: [decoded.id]}}})
+        if (!userInfo) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+        res.status(200).json({ userInfo, courses });
+      })
+      
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
 app.get("/students/:courseId", async (req, res) => { 
     //returns all students' ids and face encodings in a course
     try {
@@ -144,7 +232,7 @@ app.get("/students/:courseId", async (req, res) => {
 
 
 app.get('/courses/:professorId', async (req, res) => {//finds all of the professors courses
-    const courses = await Course.findAll({ where: { professor_id: req.params.professorId } });
+    const courses = await Course.findAll({ where: { professor_id: req.params.professorId, isCurrent: true } });
     res.json(courses);
 });
 
@@ -263,7 +351,7 @@ app.post('/removeCourse', async (req, res) => {//makes course inactive by course
     try {
         const { professor_id, course_id } = req.body;
         await Course.update({ isCurrent: false }, { where: { isCurrent: true, professor_id, course_id } });
-        res.json({ success: true, message: 'Course removed successfully' });
+        res.status(200).json({ success: true, message: 'Course removed successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error removing course', error });
     }
