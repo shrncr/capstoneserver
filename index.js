@@ -17,7 +17,7 @@ const path = require('path');
 const { Op } = require("sequelize");
 const app = express();//start express app
 app.use(cors({
-    origin: ['http://localhost:3000', "chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie", ] ,//allow requests from frontend
+    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie', ] ,//allow requests from frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     allowedHeaders: ['Content-Type', 'Authorization', 'User-Agent', 'Accept', 'Referer'], 
     credentials: true, //cookies
@@ -205,7 +205,7 @@ app.post("/studentInfo", async (req, res) => {
   
         console.log(decoded);
         const userInfo = await Student.findByPk(decoded.id);
-        const courses = await Course.findAll({ where: { students: { [Op.contains]: [decoded.id] } } });
+        const courses = await Course.findAll({ where: { students: { [Op.contains]: [decoded.id] }, isCurrent:true } });
         
         if (!userInfo) {
           return res.status(404).json({ message: "User not found" });
