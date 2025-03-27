@@ -17,21 +17,23 @@ const path = require('path');
 const { Op } = require("sequelize");
 const app = express();//start express app
 app.use(cors({
-    origin: '*',  // Allow all origins
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    
+    origin: function (origin, callback) {
+        // Allow requests from any origin
+        callback(null, true);
+    },
+    credentials: true  // This ensures credentials (cookies, tokens) are allowed
 }));
+
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://your-frontend-domain.com');  // Replace with your frontend domain
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
+    res.header('Access-Control-Allow-Credentials', 'true');  // Allow credentials
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');  // Allowed HTTP methods
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');  // Allowed headers
+
+    // For preflight requests
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
-    
+
     next();
 });
 
