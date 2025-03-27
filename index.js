@@ -192,23 +192,33 @@ app.get("/students/:courseId/encodings", async (req, res) => {
 
 app.post("/studentInfo", async (req, res) => {
     try {
-      //make it give the token tho
-      const user  = req.body.user;
-      jwt.verify(user, process.env.JWT_SECRET, async function(err, decoded){
-        console.log(decoded)
-        console.log(decoded.id) 
-        const userInfo = await Student.findByPk(decoded.id);
-        const courses= await Course.findAll({where: {students: {[Op.contains]: [decoded.id]}}})
-        if (!userInfo) {
-          return res.status(401).json({ message: "Invalid credentials" });
-        }
-        res.status(200).json({ userInfo, courses });
-      })
+      const token = req.headers['authorization']?.split(' ')[1];  // Extract token from Authorization header
       
+      if (!token) {
+        return res.status(403).json({ message: "No token provided" });
+      }
+      
+      jwt.verify(token, process.env.JWT_SECRET, async function (err, decoded) {
+        if (err) {
+          return res.status(401).json({ message: "Invalid or expired token" });
+        }
+  
+        console.log(decoded);
+        const userInfo = await Student.findByPk(decoded.id);
+        const courses = await Course.findAll({ where: { students: { [Op.contains]: [decoded.id] } } });
+        
+        if (!userInfo) {
+          return res.status(404).json({ message: "User not found" });
+        }
+  
+        res.status(200).json({ userInfo, courses });
+      });
+  
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }
   });
+  
   
 app.get("/students/:courseId", async (req, res) => { 
     //returns all students' ids and face encodings in a course
