@@ -17,11 +17,11 @@ const path = require('path');
 const { Op } = require("sequelize");
 const app = express();//start express app
 app.use(cors({
-    origin: 'http://localhost:3000',  // Allow all origins
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    
-}));
+    origin: ['http://localhost:3000', "https://bonapp.vercel.app"] ,//allow requests from frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+    allowedHeaders: ['Content-Type', 'Authorization', 'User-Agent', 'Accept', 'Referer'], 
+    credentials: true, //cookies
+  }));
 
 
 app.use(express.json());
