@@ -355,7 +355,16 @@ app.post('/removePastCourses', async (req, res) => {
 app.post('/removeCourse', async (req, res) => {//makes course inactive by courseID
     try {
         const { professor_id, course_id } = req.body;
-        await Course.update({ isCurrent: false }, { where: { isCurrent: true, professor_id, course_id } });
+        await Course.update(
+            { isCurrent: false }, 
+            { 
+                where: { 
+                    isCurrent: true, 
+                    professor_id: professor_id, 
+                    id: course_id 
+                } 
+            }
+        );
         res.status(200).json({ success: true, message: 'Course removed successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error removing course', error });
