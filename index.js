@@ -16,7 +16,12 @@ const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make 
 const path = require('path');
 const { Op } = require("sequelize");
 const app = express();//start express app
-app.use(cors());
+app.use(cors({
+    origin: '*',  // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 const storage = multer.memoryStorage(); // Store files in memory instead of disk
 const upload = multer({ storage });
