@@ -121,7 +121,7 @@ app.post('/student/signup', async (req, res) => {
             return res.status(404).json({ success: false, message: "Student not found" });
         }
 
-        if (signingUpUser.registered) {
+        if (signingUpUser.registered == true) {
             return res.status(403).json({ success: false, message: "Account already exists for this user" });
         }
 
