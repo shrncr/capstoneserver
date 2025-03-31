@@ -487,6 +487,8 @@ app.post('/startAttendence', async (req, res) => {
         });
     }
 });
+app.get("/", (req, res) => res.send("Hello Railway!"));
+
 app.post('/closeAttendenceSession', async (req, res) => {
     // Query the database or cache for an active session for the course.
     // For a simple implementation, you might return a boolean or session details.
