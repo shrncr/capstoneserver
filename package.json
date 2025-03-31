@@ -28,6 +28,7 @@
     "pg-hstore": "^2.3.4",
     "postgres": "^3.4.5",
     "sequelize": "^6.37.5",
+    "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
     "vercel": "^41.1.4"
   }

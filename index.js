@@ -12,12 +12,16 @@ const bcrypt = require('bcrypt');
 const streamifier = require('streamifier');
 const csvParser = require('csv-parser');
 const Papa = require('papaparse');
-const { Sequelize, DataTypes } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
+const socketIo = require('socket.io');
+const { Sequelize, DataTypes, where } = require('sequelize'); //js library thatll make it easy for me to use postgres tables
 const path = require('path');
+const http = require('http');
 const { Op } = require("sequelize");
 const app = express();//start express app
+const server = http.createServer(app);
+const io = socketIo(server); 
 app.use(cors({
-    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie', ] ,//allow requests from frontend
+    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie', "http://127.0.0.1:5001"] ,//allow requests from frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     allowedHeaders: ['Content-Type', 'Authorization', 'User-Agent', 'Accept', 'Referer'], 
     credentials: true, //cookies
@@ -50,11 +54,11 @@ const Course = sequelize.define('course', {//course db schema
         primaryKey: true 
     },
     name: { type: DataTypes.STRING, allowNull: false },
-    isCurrent:{type: Boolean,allowNull: false},
+    isCurrent:{type: DataTypes.BOOLEAN,allowNull: false},
     professor_id:{type:DataTypes.INTEGER},
-    students: { 
+    students: {  
         type: DataTypes.ARRAY(DataTypes.INTEGER), // Store array of student IDs
-        defaultValue: [] 
+        defaultValue: []  
     }
 },{ timestamps: false });
 const Student = sequelize.define('student', {//student db schema
@@ -83,13 +87,46 @@ const Attendance = sequelize.define('attendance', {//attendence db schema. la la
     timestamp: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
     status: { type: DataTypes.ENUM('Present', 'Absent'), allowNull: false }
 },{ timestamps: false });
-
+const attendencesession = sequelize.define('attendencesession', {//attendence db schema. la la la
+    created_at: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
+    ended_at: { type: DataTypes.DATE, defaultValue:null },
+    isActive: {type:DataTypes.BOOLEAN, defaultValue: true},
+    roomId: {type:DataTypes.INTEGER, allowNull:false},
+    courseId:{type:DataTypes.INTEGER, allowNull:false},
+});
+const attendenceBySession = sequelize.define('attendenceBySession', {//attendence db schema. la la la
+    attendenceId:{type:DataTypes.INTEGER, allowNull:false},
+    attendencesessionid:{type:DataTypes.INTEGER, allowNull:false},
+});
 //relationships
 Course.belongsTo(Professor, { foreignKey: 'professor_id' });
 //Student.belongsTo(Course, { foreignKey: 'course_id' });
 Attendance.belongsTo(Student, { foreignKey: 'student_id' });
-Attendance.belongsTo(Course, { foreignKey: 'course_id' });
+attendenceBySession.belongsTo(Attendance, { foreignKey: 'attendenceId' });
+attendenceBySession.belongsTo(attendencesession, { foreignKey: 'attendencesessionid' });
+attendencesession.belongsTo(Course, { foreignKey: 'courseId' });
+Course.belongsTo(attendenceBySession, {foreignKey:"courseId"})
 sequelize.sync();
+
+// Handle a socket connection from a client
+io.on('connection', (socket) => {
+    console.log('A user connected.');
+  
+    // Send a welcome message when the client connects
+    socket.emit('server_message', { data: 'Welcome to the server!' });
+  
+    // Listen for a custom message from the client
+    socket.on('client_message', (data) => {
+      console.log('Message from client:', data);
+      // Send a response back to the client
+      socket.emit('server_response', { data: 'Message received!' });
+    });
+  
+    // Handle disconnect event
+    socket.on('disconnect', () => {
+      console.log('A user disconnected.');
+    });
+  });
 
 app.post('/login', async (req, res) => { //professor logs in with pin
     const { name, pin } = req.body;
@@ -177,13 +214,13 @@ app.get("/students/:courseId/encodings", async (req, res) => {
             return res.json([]); // Return empty array if no students are in the course
         }
 
-        const students = await Student.findAll({ where: { id: studentIds } });
+        const students = await Student.findAll({ where: { id: studentIds, face_encoding: { [Op.ne]: null }} });
         const response = students.map(student => ({
             id: student.id,
             face_encoding: student.face_encoding 
         }));
 
-        res.json(response); 
+        res.status(200).json({students: response}); 
     } catch (error) {
         console.error("Error fetching students:", error);
         res.status(500).json({ error: "Error fetching students" });
@@ -404,12 +441,14 @@ app.post('/checkIfStudentInCourse', async (req, res) => {
 app.post('/uploadStudentPictures', async (req, res) => {
     try {
         const { student_id, face_encoding } = req.body;
+        console.log("fneo"
+        )
         await Student.update({ face_encoding }, { where: { id: student_id } });
         res.json({ success: true, message: 'Face encoding updated' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error uploading face encoding', error });
     }
-});
+}); 
 
 app.post('/attendance', async (req, res) => {
     try {
@@ -420,6 +459,45 @@ app.post('/attendance', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error recording attendance', error });
     }
 });
+app.get('/findActiveAttendanceSession/:roomNumber', async (req, res) => {
+    // Query the database or cache for an active session for the course.
+    // For a simple implementation, you might return a boolean or session details.
+    const activeSession = await attendancesession.findOne({ where: { roomId: req.params.roomNumber, isActive: true } });
+    if (activeSession) {
+        return res.json({ success: true, session: activeSession });
+    } else {
+        return res.json({ success: false, message: 'No active attendance session' });
+    }
+});
+app.post('/startAttendence', async (req, res) => {
+
+    try {
+        let {courseId,roomId} = req.body
+        const activeSession = await attendencesession.create({roomId:roomId, courseId:courseId})
+        io.emit('attendanceStarted', { courseId, roomId, timestamp: Date.now() });
+        res.status(200).json(activeSession);
+    } catch (error) {
+        console.error('Error:', error);
+
+        // Send a response with the error details
+        res.status(500).json({
+            success: false,
+            message: 'Error recording attendance',
+            error: error.message || 'Unknown error'
+        });
+    }
+});
+app.post('/closeAttendenceSession', async (req, res) => {
+    // Query the database or cache for an active session for the course.
+    // For a simple implementation, you might return a boolean or session details.
+    try {
+        let {courseId,roomId} = req.body
+        const activeSession = await attendancesession.findOne({where:{courseId:courseId, roomId:roomId}})
+        res.status(200).json(activeSession);
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error recording attendance', error });
+    }
+});
 const PORT = process.env.PORT |5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    
