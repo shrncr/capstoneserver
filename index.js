@@ -85,7 +85,9 @@ const Student = sequelize.define('student', {//student db schema
 );
 const Attendance = sequelize.define('attendance', {//attendence db schema. la la la
     timestamp: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
-    status: { type: DataTypes.ENUM('Present', 'Absent'), allowNull: false }
+    status: { type: DataTypes.ENUM('Present', 'Absent'), allowNull: false },
+    student_id:{type:DataTypes.INTEGER, allowNull:false},
+    session_id: {type:DataTypes.INTEGER, allowNull:false},
 },{ timestamps: false });
 const attendencesession = sequelize.define('attendencesession', {//attendence db schema. la la la
     created_at: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
@@ -451,24 +453,57 @@ app.post('/uploadStudentPictures', async (req, res) => {
 }); 
 
 app.post('/attendance', async (req, res) => {
+    console.log("hi")
+    // const Attendance = sequelize.define('attendance', {//attendence db schema. la la la
+    //     timestamp: { type: DataTypes.DATE, defaultValue: Sequelize.NOW },
+    //     status: { type: DataTypes.ENUM('Present', 'Absent'), allowNull: false },
+    //     student_id:{type:DataTypes.INTEGER, allowNull:false},
+    //     session_id: {type:DataTypes.INTEGER, allowNull:false},
     try {
-        const { student_id, course_id, status } = req.body;
-        const attendance = await Attendance.create({ student_id, course_id, status });
-        res.json(attendance);
+        const { student_id, course_id, status, session_id } = req.body;
+        const attendance = await Attendance.create({ student_id, status, session_id });
+        res.status(201).json({success: true, attendence:attendance});
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error recording attendance', error });
     }
 });
-app.get('/findActiveAttendanceSession/:roomNumber', async (req, res) => {
-    // Query the database or cache for an active session for the course.
-    // For a simple implementation, you might return a boolean or session details.
-    const activeSession = await attendancesession.findOne({ where: { roomId: req.params.roomNumber, isActive: true } });
-    if (activeSession) {
-        return res.json({ success: true, session: activeSession });
-    } else {
-        return res.json({ success: false, message: 'No active attendance session' });
+
+app.get('/attendance/:sessionID', async (req, res) => {
+    try {
+        const sessionAttendance = await Attendance.findAll({
+            where: { session_id: req.params.sessionID },
+            include: [
+                {
+                    model: Student, // assuming you have this model defined and associated
+                    as: 'student',  // use alias if defined in association
+                    attributes: { exclude: ['createdAt', 'updatedAt'] } // optional: clean up response
+                }
+            ]
+        });
+
+        if (sessionAttendance.length > 0) {
+            return res.json({ success: true, attendance: sessionAttendance });
+        } else {
+            return res.json({ success: false, message: 'No attendance session found' });
+        }
+    } catch (error) {
+        console.error('Error fetching attendance:', error);
+        res.status(500).json({ success: false, message: 'Server error', error });
     }
 });
+
+
+app.get('/sessions/:courseid', async (req, res) => {
+    // Query the database or cache for an active session for the course.
+    // For a simple implementation, you might return a boolean or session details.
+    const sessions = await attendencesession.findAll({ where: { courseId: req.params.courseid } });
+    if (sessions) {
+        return res.json({ success: true, attendences: sessions });
+    } else {
+        return res.json({ success: false, message: 'No attendance session' });
+    }
+});
+
 app.post('/startAttendence', async (req, res) => {
 
     try {
