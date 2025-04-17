@@ -509,7 +509,7 @@ app.post('/startAttendence', async (req, res) => {
     try {
         let {courseId,roomId} = req.body
         const activeSession = await attendencesession.create({roomId:roomId, courseId:courseId})
-        io.emit('attendanceStarted', { courseId, roomId, timestamp: Date.now() });
+        io.emit('attendanceStarted', { sessionId:activeSession.id, courseId, sessionId, roomId, timestamp: Date.now() });
         res.status(200).json(activeSession);
     } catch (error) {
         console.error('Error:', error);
