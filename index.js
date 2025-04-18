@@ -21,7 +21,9 @@ const app = express();//start express app
 const server = http.createServer(app);
 const io = socketIo(server); 
 app.use(cors({
-    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie',  'chrome-extension://jabbmdnfncbfldfdeedhpnpbnljehpib', "http://127.0.0.1:5001", ] ,//allow requests from frontend
+    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie',  'chrome-extension://jabbmdnfncbfldfdeedhpnpbnljehpib', "http://127.0.0.1:5001",
+        'chrome-extension://dcbmdamicjlhpencmfggghalkhhaakka', 'chrome-extension://hpkghbcgocjbfkbglccebjcejcgeofom'
+     ] ,//allow requests from frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     allowedHeaders: ['Content-Type', 'Authorization', 'User-Agent', 'Accept', 'Referer'], 
     credentials: true, //cookies
@@ -149,7 +151,39 @@ app.post('/signup', async (req, res) => { //professor logs in with pin
       res.status(400).json({success: false, message: error.message });
     }
 });
+app.post('/removefacemodel',async (req, res) => {
+    try{
+        const token = req.headers['authorization']?.split(' ')[1];  // Extract token from Authorization header
+        let studentid;
+        if (!token) {
+          return res.status(403).json({ message: "No token provided" });
+        }
+        
+        jwt.verify(token, process.env.JWT_SECRET, async function (err, decoded) {
+          if (err) {
+            return res.status(401).json({ message: "Invalid or expired token" });
+          }
+    
+          console.log(decoded);
+          studentid= decoded.id
+        })
+        const student = await Student.findByPk(studentid);
+        console.log(student)
+        if (student){
+            const s = await student.update({face_encoding: null})
+        }else{
+            return res.status(404).json({ success: false, message: "Student not found" });
+        }
+        
+        return res.status(200).json({ success: true, message: "Student face encoding removed", student });
+    }catch(err){
+        return res.status(500).json({ success: false, message: "idk whats wrong" });
 
+    }
+})
+app.get('facemodel/:studentid',async (req, res) => {
+
+})
 app.post('/student/signup', async (req, res) => {
     try {
         const { password, studentId, email, number } = req.body;
