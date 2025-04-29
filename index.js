@@ -21,7 +21,7 @@ const app = express();//start express app
 const server = http.createServer(app);
 const io = socketIo(server); 
 app.use(cors({
-    origin: ['http://localhost:3000', 'chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie',  'chrome-extension://jabbmdnfncbfldfdeedhpnpbnljehpib', "http://127.0.0.1:5001",
+    origin: ['http://localhost:3000', 'chrome-extension://mgmaaldoomhgjigkegoebfbdbgmmcnma','chrome-extension://cldcoaaoanjlgjodnafeapnaommcmhie',  'chrome-extension://jabbmdnfncbfldfdeedhpnpbnljehpib', "http://127.0.0.1:5001",
         'chrome-extension://dcbmdamicjlhpencmfggghalkhhaakka', 'chrome-extension://hpkghbcgocjbfkbglccebjcejcgeofom', 'chrome-extension://dcbmdamicjlhpencmfggghalkhhaakka'
      ] ,//allow requests from frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
